@@ -13,7 +13,7 @@ if [ ! -f "$IMG_NAME" ];then
 	exit 1
 fi
 
-# find boot partition 
+# find boot partition
 BOOT_PART_MSG=$(lsblk -l -o NAME,PATH,TYPE,UUID,MOUNTPOINT | awk '$3~/^part$/ && $5 ~ /^\/boot$/ {print $0}')
 if [ "${BOOT_PART_MSG}" == "" ];then
 	echo "The boot partition is not exists or not mounted, so it cannot be upgraded with this script!"
@@ -31,12 +31,12 @@ BOOT_NAME=$(echo $BOOT_PART_MSG | awk '{print $1}')
 BOOT_PATH=$(echo $BOOT_PART_MSG | awk '{print $2}')
 BOOT_UUID=$(echo $BOOT_PART_MSG | awk '{print $4}')
 
-# find root partition 
+# find root partition
 ROOT_PART_MSG=$(lsblk -l -o NAME,PATH,TYPE,UUID,MOUNTPOINT | awk '$3~/^part$/ && $5 ~ /^\/$/ {print $0}')
 ROOT_NAME=$(echo $ROOT_PART_MSG | awk '{print $1}')
 ROOT_PATH=$(echo $ROOT_PART_MSG | awk '{print $2}')
 ROOT_UUID=$(echo $ROOT_PART_MSG | awk '{print $4}')
-case $ROOT_NAME in 
+case $ROOT_NAME in
   mmcblk0p2) NEW_ROOT_NAME=mmcblk0p3
 	     NEW_ROOT_LABEL=EMMC_ROOTFS2
 	     ;;
@@ -91,7 +91,7 @@ for dev in $MOUNTED_DEVS;do
 		if [ "$mnt" == "" ];then
 			echo "ok"
 			break
-		else 
+		else
 			echo "try again ..."
 		fi
 	done
@@ -108,9 +108,9 @@ if [ $? -ne 0 ];then
 	echo "mount failed"
 	losetup -D
 	exit 1
-else 
+else
 	echo "ok"
-fi	
+fi
 
 echo -n "mount ${LOOP_DEV}p2 -> ${P2} ... "
 mount -t btrfs -o ro,compress=zstd ${LOOP_DEV}p2 ${P2}
@@ -121,7 +121,7 @@ if [ $? -ne 0 ];then
 	exit 1
 else
 	echo "ok"
-fi	
+fi
 
 #format NEW_ROOT
 echo "umount ${NEW_ROOT_MP}"
@@ -165,7 +165,7 @@ for entry in $ENTRYS;do
 		continue
 	fi
 	echo -n "remove old $entry ... "
-	rm -rf $entry 
+	rm -rf $entry
 	if [ $? -eq 0 ];then
 		echo "ok"
 	else
@@ -234,7 +234,7 @@ config mount
         option enabled '1'
         option enabled_fsck '0'
         option fstype 'ext4'
-                
+
 EOF
 
 echo "create the first etc snapshot -> .snapshots/etc-000"
@@ -277,10 +277,6 @@ if [ $BR_FLAG -eq 1 ];then
     echo
 fi
 
-cat >> ./etc/crontabs/root << EOF
-17 3 * * * /etc/coremark.sh
-EOF
-
 sed -e 's/ttyAMA0/ttyS2/' -i ./etc/inittab
 sed -e 's/ttyS0/tty1/' -i ./etc/inittab
 sss=$(date +%s)
@@ -310,13 +306,13 @@ btrfs subvolume snapshot -r etc .snapshots/etc-001
 #chattr +ia ./etc/config/fstab
 
 cd ${WORK_DIR}
- 
+
 echo "Start copy data from ${P2} to /boot ..."
 cd /boot
 echo -n "remove old boot files ..."
 rm -rf *
 echo "done"
-echo -n "copy new boot files ... " 
+echo -n "copy new boot files ... "
 (cd ${P1} && tar cf - . ) | tar xf -
 sync
 echo "done"
@@ -331,7 +327,7 @@ rootfstype=btrfs
 rootflags=compress=zstd
 extraargs=usbcore.autosuspend=-1
 extraboardargs=
-fdtfile=/dtb/rockchip/rk3328-l1pro-1296mhz.dtb
+fdtfile=/dtb/rockchip/rk3328-l1pro-1512mhz.dtb
 EOF
 sync
 echo "done"

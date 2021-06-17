@@ -28,7 +28,7 @@ if [ ! -f ${DTBS_TGZ} ];then
 fi
 ######################################################################
 
-# Openwrt 
+# Openwrt
 OP_ROOT_TGZ="openwrt-armvirt-64-default-rootfs.tar.gz"
 OPWRT_ROOTFS_GZ="${PWD}/${OP_ROOT_TGZ}"
 if [ $SFE_FLAG -eq 1 ];then
@@ -174,13 +174,13 @@ echo "openwrt 根文件系统解包 ... "
 )
 
 echo "Armbian firmware 解包 ... "
-( 
+(
   cd ${TGT_ROOT} && \
   tar xJf $FIRMWARE_TXZ
 )
-  
+
 echo "内核模块解包 ... "
-( 
+(
   cd ${TGT_ROOT} && \
   mkdir -p lib/modules && \
   cd lib/modules && \
@@ -188,7 +188,7 @@ echo "内核模块解包 ... "
 )
 
 echo "boot 文件解包 ... "
-( 
+(
   cd ${TGT_BOOT} && \
   cp -v "${BOOTFILES_HOME}"/* . && \
   tar xzf "${BOOT_TGZ}" && \
@@ -216,7 +216,7 @@ rootfstype=btrfs
 rootflags=compress=zstd
 extraargs=usbcore.autosuspend=-1
 extraboardargs=
-fdtfile=/dtb/rockchip/rk3328-l1pro-1296mhz.dtb
+fdtfile=/dtb/rockchip/rk3328-l1pro-1512mhz.dtb
 EOF
 
 echo "modify root ... "
@@ -247,7 +247,7 @@ fi
 
 if [ -f "$FIRSTRUN_SCRIPT" ];then
 	chmod 755 "$FIRSTRUN_SCRIPT"
- 	cp "$FIRSTRUN_SCRIPT" ./usr/bin/ 
+ 	cp "$FIRSTRUN_SCRIPT" ./usr/bin/
 	mv ./etc/rc.local ./etc/rc.local.orig
 	cat > ./etc/part_size <<EOF
 ${SKIP_MB}	${BOOT_MB}	${ROOTFS_MB}
@@ -419,11 +419,6 @@ EOF
 [ -f ./sbin/firstboot ] && rm -f ./sbin/firstboot
 [ -f ./sbin/jffs2reset ] && rm -f ./sbin/jffs2reset
 
-rm -f ./etc/bench.log
-cat >> ./etc/crontabs/root << EOF
-17 3 * * * /etc/coremark.sh
-EOF
-
 mkdir -p ./etc/modprobe.d
 
 #echo br_netfilter > ./etc/modules.d/br_netfilter
@@ -452,7 +447,7 @@ fi
 
 [ -f $CPUSTAT_PATCH ] && \
 cd $TGT_ROOT/usr/lib/lua/luci/view/admin_status && \
-patch -p0 < ${CPUSTAT_PATCH} 
+patch -p0 < ${CPUSTAT_PATCH}
 
 # 创建 /etc 初始快照
 echo "创建初始快照: /etc -> /.snapshots/etc-000"
