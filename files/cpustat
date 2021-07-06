@@ -5,6 +5,7 @@ use Time::HiRes qw /usleep/;
 binmode(STDOUT, ":utf8");
 
 sub get_soc_temp {
+    my $t=shift;
     my @fnames=(
           '/sys/devices/virtual/thermal/thermal_zone0/temp',
           '/sys/devices/platform/scpi/scpi:sensors/hwmon/hwmon0/temp1_input',
@@ -13,7 +14,11 @@ sub get_soc_temp {
     for my $fname (@fnames) {
         if( -f $fname ) {
             open my $fh, "<", $fname;
-            $temp = sprintf "%0.1f℃", <$fh> / 1000;
+	    if($t) {
+                $temp = sprintf "%0.1f", <$fh> / 1000;
+            } else {
+                $temp = sprintf "%0.1f℃", <$fh> / 1000;
+            }
             close $fh;
             return $temp;
         }
@@ -23,13 +28,19 @@ sub get_soc_temp {
 }
 
 sub get_cpu_freq {
+    my $f=shift;
     my @fnames=</sys/devices/system/cpu/cpufreq/policy?/cpuinfo_cur_freq>;
     my $freq_str = "";
     for (my $i=0; $i < $#fnames + 1; $i++) {
         my $fname = $fnames[$i];
         open my $fh, "<", $fname;
 	usleep(50000);
-        my $freq = sprintf "%dMhz", <$fh> / 1000;
+	my $freq;
+	if($f) {
+            $freq = sprintf "%d", <$fh> / 1000;
+        } else {
+            $freq = sprintf "%dMhz", <$fh> / 1000;
+        }    
         close $fh;
 	$freq_str .= $freq;
         if($i < $#fnames) {
@@ -45,6 +56,7 @@ sub get_cpu_freq {
 }
 
 sub get_arch_info {
+    my $a=shift;
     my @cpus = </sys/devices/system/cpu/cpu?>;
     my @cpu_groups;
     my %group_core_count;
@@ -66,14 +78,23 @@ sub get_arch_info {
         close $fh;
     }
 
-    my $arch_info = "AArch64 Processor : ";
+    my $arch_info;
+    if($a) {
+        $arch_info = "AArch64 : " if ($a);
+    } else {
+        $arch_info = "AArch64 Processor : ";
+    }
     for (my $i = 0; $i < $#cpu_groups + 1; $i++) {
         my $group = $cpu_groups[$i];
 	#if($i == 0) {
 	#    $arch_info .= "";
 	#}
         $arch_info .= $group;
-        $arch_info .= " * ";
+	if($a) {
+            $arch_info .= " x ";
+        } else {
+            $arch_info .= " * ";
+        }
         $arch_info .= $group_core_count{$group};
         if($i < $#cpu_groups) {
             $arch_info .= " & ";
@@ -91,8 +112,14 @@ if($argc == 0) {
     print &get_cpu_freq, " / ", &get_soc_temp, "\n";
 } elsif($ARGV[0] eq "-a") {
     print &get_arch_info, "\n";
+} elsif($ARGV[0] eq "-A") {
+    print &get_arch_info("A"), "\n";
 } elsif($ARGV[0] eq "-t") {
     print &get_soc_temp, "\n";
+} elsif($ARGV[0] eq "-T") {
+    print &get_soc_temp("T"), "\n";
 } elsif($ARGV[0] eq "-f") {
     print &get_cpu_freq, "\n";
+} elsif($ARGV[0] eq "-F") {
+    print &get_cpu_freq('F'), "\n";
 }
