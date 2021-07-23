@@ -177,7 +177,8 @@ btrfs subvolume create $TGT_ROOT/etc
 echo "openwrt 根文件系统解包 ... "
 (
   cd $TGT_ROOT && \
-  tar -xzf $OPWRT_ROOTFS_GZ && \
+  tar --exclude="./lib/firmware/*" --exclude="./lib/modules/*" -xzf $OPWRT_ROOTFS_GZ && \
+  rm -rf ./lib/firmware/* ./lib/modules/* && \
   mkdir -p .reserved boot rom proc sys run
 )
 
