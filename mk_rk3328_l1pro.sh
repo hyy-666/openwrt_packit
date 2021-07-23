@@ -116,7 +116,7 @@ FORCE_REBOOT="${PWD}/files/rk3328/reboot"
 
 SKIP_MB=16
 BOOT_MB=160
-ROOTFS_MB=720
+ROOTFS_MB=1024
 
 # work dir
 cd $WORK_DIR
