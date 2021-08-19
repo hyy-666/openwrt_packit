@@ -256,9 +256,9 @@ else
 fi
 
 # 判断要刷的版本
-echo $NEW_KV | grep -E 'flippy-[0-9]{1,3}\+[o]{0,1}' > /dev/null
+echo $NEW_KV | grep -E '\w+-[0-9]{1,3}\+[o]{0,1}$' > /dev/null
 if [ $? -ne 0 ];then
-    echo "目标固件的内核版本格式无法识别！"
+    echo "目标固件的内核版本后缀格式无法识别！"
     umount -f ${P1}
     umount -f ${P2}
     losetup -D
@@ -558,6 +558,10 @@ sed -e 's/ttyS0/tty0/' -i ./etc/inittab
 sss=$(date +%s)
 ddd=$((sss/86400))
 sed -e "s/:0:0:99999:7:::/:${ddd}:0:99999:7:::/" -i ./etc/shadow
+# 修复amule每次升级后重复添加条目的问题
+sed -e "/amule:x:/d" -i ./etc/shadow
+# 修复dropbear每次升级后重复添加sshd条目的问题
+sed -e "/sshd:x:/d" -i ./etc/shadow
 if [ `grep "sshd:x:22:22" ./etc/passwd | wc -l` -eq 0 ];then
     echo "sshd:x:22:22:sshd:/var/run/sshd:/bin/false" >> ./etc/passwd
     echo "sshd:x:22:sshd" >> ./etc/group
@@ -572,6 +576,7 @@ if [ $BR_FLAG -eq 1 ];then
     echo "完成"
     echo
 fi
+sed -e "s/option hw_flow '1'/option hw_flow '0'/" -i ./etc/config/turboacc
 eval tar czf .reserved/openwrt_config.tar.gz "${BACKUP_LIST}" 2>/dev/null
 
 rm -f ./etc/part_size ./usr/bin/mk_newpart.sh

@@ -32,15 +32,6 @@ fi
 # Openwrt 
 OP_ROOT_TGZ="openwrt-armvirt-64-default-rootfs.tar.gz"
 OPWRT_ROOTFS_GZ="${PWD}/${OP_ROOT_TGZ}"
-if [ $SFE_FLAG -eq 1 ];then
-    if [ -f "${PWD}/sfe/${OP_ROOT_TGZ}" ];then
-        OPWRT_ROOTFS_GZ="${PWD}/sfe/${OP_ROOT_TGZ}"
-    fi
-elif [ ${FLOWOFFLOAD_FLAG} -eq 1 ];then
-    if [ -f "${PWD}/flowoffload/${OP_ROOT_TGZ}" ];then
-        OPWRT_ROOTFS_GZ="${PWD}/flowoffload/${OP_ROOT_TGZ}"
-    fi
-fi
 echo "Use $OPWRT_ROOTFS_GZ as openwrt rootfs!"
 
 # Target Image
@@ -341,6 +332,7 @@ else
 fi
 [ -f ./etc/config/shairport-sync ] && [ -f ${SND_MOD} ] && cp ${SND_MOD} ./etc/modules.d/
 echo "r8188eu" > ./etc/modules.d/rtl8188eu
+echo "dw_wdt" > ./etc/modules.d/watchdog
 
 sed -e 's/ttyAMA0/tty1/' -i ./etc/inittab
 sed -e 's/ttyS0/ttyS2/' -i ./etc/inittab
@@ -460,7 +452,8 @@ EOF
 
 mkdir -p ./etc/modprobe.d
 
-#echo br_netfilter > ./etc/modules.d/br_netfilter
+sed -e "s/option sw_flow '1'/option sw_flow '${SW_FLOWOFFLOAD}'/" -i ./etc/config/turboacc
+sed -e "s/option hw_flow '1'/option hw_flow '${HW_FLOWOFFLOAD}'/" -i ./etc/config/turboacc
 
 cd $TGT_ROOT/lib/modules/${KERNEL_VERSION}/
 find . -name '*.ko' -exec ln -sf {} . \;
