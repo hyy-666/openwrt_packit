@@ -9,6 +9,26 @@ fi
 # 源镜像文件
 ##########################################################################
 source make.env
+function check_k510() {
+    # 判断内核版本是否 >= 5.10
+    K_VER=$(echo "$KERNEL_VERSION" | cut -d '.' -f1)
+    K_MAJ=$(echo "$KERNEL_VERSION" | cut -d '.' -f2)
+
+    if [ $K_VER -eq 5 ];then
+        if [ $K_MAJ -ge 10 ];then
+            K510=1
+        else
+	    K510=0
+        fi
+    elif [ $K_VER -gt 5 ];then
+        K510=1
+    else
+        K510=0
+    fi
+    export K510
+}
+check_k510
+
 # 盒子型号识别参数 
 SOC=s922x
 BOARD=gtking
@@ -39,22 +59,6 @@ echo "Use $OPWRT_ROOTFS_GZ as openwrt rootfs!"
 
 # 目标镜像文件
 TGT_IMG="${WORK_DIR}/openwrt_${SOC}_${BOARD}_${OPENWRT_VER}_k${KERNEL_VERSION}${SUBVER}.img"
-
-# 判断内核版本是否 >= 5.10
-K_VER=$(echo "$KERNEL_VERSION" | cut -d '.' -f1)
-K_MAJ=$(echo "$KERNEL_VERSION" | cut -d '.' -f2)
-
-if [ $K_VER -eq 5 ];then
-	if [ $K_MAJ -ge 10 ];then
-		K510=1
-	else
-		K510=0
-	fi
-elif [ $K_VER -gt 5 ];then
-	K510=1
-else
-	K510=0
-fi
 
 # 补丁和脚本
 ###########################################################################
@@ -535,8 +539,23 @@ alias pwm pwm_meson
 alias wifi brcmfmac
 EOF
 
-sed -e "s/option sw_flow '1'/option sw_flow '${SW_FLOWOFFLOAD}'/" -i ./etc/config/turboacc
-sed -e "s/option hw_flow '1'/option hw_flow '${HW_FLOWOFFLOAD}'/" -i ./etc/config/turboacc
+if [ -f ./etc/config/turboacc ];then
+    sed -e "s/option sw_flow '1'/option sw_flow '${SW_FLOWOFFLOAD}'/" -i ./etc/config/turboacc
+    sed -e "s/option hw_flow '1'/option hw_flow '${HW_FLOWOFFLOAD}'/" -i ./etc/config/turboacc
+    sed -e "s/option sfe_flow '1'/option sfe_flow '${SFE_FLOW}'/" -i ./etc/config/turboacc
+else
+    cat > ./etc/config/turboacc <<EOF
+
+config turboacc 'config'
+        option sw_flow '${SW_FLOWOFFLOAD}'
+        option hw_flow '${HW_FLOWOFFLOAD}'
+	option sfe_flow '${SFE_FLOW}'
+        option bbr_cca '0'
+        option fullcone_nat '1'
+        option dns_caching '0'
+
+EOF
+fi
 
 echo pwm_meson > ./etc/modules.d/pwm_meson
 echo panfrost > ./etc/modules.d/panfrost
