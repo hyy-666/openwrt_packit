@@ -161,7 +161,7 @@ EOF
 config mount
 	option target '/boot'
 EOF
-    
+
     if [ "${BOOT_FSTYPE}" == "vfat" ];then
         echo "	option label '${BOOT_LABEL}'" >> /etc/config/fstab
     else
@@ -172,7 +172,7 @@ EOF
 	option enabled '1'
 	option enabled_fsck '1'
 	option fstype '${BOOT_FSTYPE}'
-           
+
 EOF
     echo "/etc/config/fstab generated."
     echo "please reboot"
@@ -464,7 +464,7 @@ menu() {
         │       q. quit                   │
         │                                 │
         └─────────────────────────────────┘
-	
+
 EOF
         echo -ne "please select: [ ]\b\b"
         read select
@@ -487,7 +487,7 @@ EOF
 }
 
 getopts 'brgplcRmsdhq' opts
-case $opts in 
+case $opts in
     b | backup)            backup;;
     r | restore)           restore
                            gen_fstab;;

@@ -102,7 +102,7 @@ for dep in ${DEPENDS};do
 done
 echo "Check passed"
 
-# find boot partition 
+# find boot partition
 BOOT_PART_MSG=$(lsblk -l -o NAME,PATH,TYPE,UUID,MOUNTPOINT | awk '$3~/^part$/ && $5 ~ /^\/boot$/ {print $0}')
 if  [ "${BOOT_PART_MSG}" == "" ]; then
     echo "Boot The partition does not exist, so the update cannot be continued!"
@@ -125,7 +125,7 @@ case $yn in
      n*|N*) BR_FLAG=0;;
 esac
 
-# find root partition 
+# find root partition
 ROOT_PART_MSG=$(lsblk -l -o NAME,PATH,TYPE,UUID,MOUNTPOINT | awk '$3~/^part$/ && $5 ~ /^\/$/ {print $0}')
 ROOT_NAME=$(echo $ROOT_PART_MSG | awk '{print $1}')
 ROOT_PATH=$(echo $ROOT_PART_MSG | awk '{print $2}')
@@ -194,7 +194,7 @@ for dev in $MOUNTED_DEVS; do
         mnt=$(lsblk -l -o NAME,PATH,MOUNTPOINT | grep "$dev" | awk '$3 !~ /^$/ {print $2}')
         if  [ "$mnt" == "" ]; then
             break
-        else 
+        else
             echo "Retry ..."
         fi
     done
@@ -321,7 +321,7 @@ for entry in $ENTRYS; do
         continue
     fi
     echo "Remove old [ $entry ] ... "
-    rm -rf $entry 
+    rm -rf $entry
     if  [ $? -ne 0 ]; then
         echo "failed."
         exit 1
@@ -375,7 +375,7 @@ config  mount
 
 EOF
 (
-    cd etc/rc.d 
+    cd etc/rc.d
     rm -f S??shortcut-fe
     if grep "sfe_flow '1'" ../config/turboacc >/dev/null;then
         if find ../../lib/modules -name 'shortcut-fe-cm.ko';then
@@ -454,7 +454,7 @@ if [ "${BR_FLAG}" -eq "1" ]; then
 fi
 sed -e "s/option hw_flow '1'/option hw_flow '0'/" -i ./etc/config/turboacc
 (
-    cd etc/rc.d 
+    cd etc/rc.d
     rm -f S??shortcut-fe
     if grep "sfe_flow '1'" ../config/turboacc >/dev/null;then
         if find ../../lib/modules -name 'shortcut-fe-cm.ko';then
@@ -535,7 +535,7 @@ echo "Create etc snapshot -> .snapshots/etc-001"
 btrfs subvolume snapshot -r etc .snapshots/etc-001
 
 cd ${WORK_DIR}
- 
+
 echo "Start copying data， from [ ${P1} ] to [ /boot ] ..."
 cd /boot
 echo "Delete the old boot file ..."
