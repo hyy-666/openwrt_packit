@@ -16,19 +16,21 @@ fi
 
 # Set the default value
 MAKE_PATH=${PWD}
-PACKAGE_OPENWRT=("vplus" "beikeyun" "l1pro" "s905" "s905d" "s905x2" "s905x3" "s912" "s922x")
-SELECT_ARMBIANKERNEL=("5.13.2" "5.4.132")
+PACKAGE_OPENWRT=("vplus" "beikeyun" "l1pro" "s905" "s905d" "s905x2" "s905x3" "s912" "s922x" "s922x-n2" "diy")
+SELECT_ARMBIANKERNEL=("5.14.12" "5.10.73" "5.4.153")
 SCRIPT_REPO_URL_VALUE="https://github.com/unifreq/openwrt_packit"
 SCRIPT_REPO_BRANCH_VALUE="master"
 KERNEL_REPO_URL_VALUE="https://github.com/breakings/OpenWrt/tree/main/opt/kernel"
 # KERNEL_REPO_URL_VALUE URL supported format:
 # KERNEL_REPO_URL_VALUE="https://github.com/breakings/OpenWrt/trunk/opt/kernel"
 # KERNEL_REPO_URL_VALUE="https://github.com/breakings/OpenWrt/tree/main/opt/kernel"
-KERNEL_VERSION_NAME_VALUE="5.13.2_5.4.132"
+KERNEL_VERSION_NAME_VALUE="5.14.12_5.4.153"
 KERNEL_AUTO_LATEST_VALUE="true"
 PACKAGE_SOC_VALUE="s905d_s905x3_beikeyun"
 GZIP_IMGS_VALUE="true"
-SELECT_OUTPUTPATH_VALUE="/opt/openwrt_packit/tmp"
+# Set the working directory under /opt
+SELECT_PACKITPATH_VALUE="openwrt_packit"
+SELECT_OUTPUTPATH_VALUE="output"
 SAVE_OPENWRT_ARMVIRT_VALUE="true"
 
 # Set the default packaging script
@@ -40,7 +42,9 @@ SCRIPT_S905D_FILE="mk_s905d_n1.sh"
 SCRIPT_S905X2_FILE="mk_s905x2_x96max.sh"
 SCRIPT_S905X3_FILE="mk_s905x3_multi.sh"
 SCRIPT_S912_FILE="mk_s912_zyxq.sh"
-SCRIPT_S022X_FILE="mk_s922x_gtking.sh"
+SCRIPT_S922X_FILE="mk_s922x_gtking.sh"
+SCRIPT_S922X_N2_FILE="mk_s922x_odroid-n2.sh"
+SCRIPT_DIY_FILE="mk_diy.sh"
 
 # Set make.env related parameters
 WHOAMI_VALUE="flippy"
@@ -74,6 +78,7 @@ ERROR="[${red_font_prefix}ERROR${font_color_suffix}]"
 [[ -n "${KERNEL_VERSION_NAME}" ]] || KERNEL_VERSION_NAME="${KERNEL_VERSION_NAME_VALUE}"
 [[ -n "${KERNEL_AUTO_LATEST}" ]] || KERNEL_AUTO_LATEST="${KERNEL_AUTO_LATEST_VALUE}"
 [[ -n "${GZIP_IMGS}" ]] || GZIP_IMGS=${GZIP_IMGS_VALUE}
+[[ -n "${SELECT_PACKITPATH}" ]] || SELECT_PACKITPATH="${SELECT_PACKITPATH_VALUE}"
 [[ -n "${SELECT_OUTPUTPATH}" ]] || SELECT_OUTPUTPATH="${SELECT_OUTPUTPATH_VALUE}"
 [[ -n "${SAVE_OPENWRT_ARMVIRT}" ]] || SAVE_OPENWRT_ARMVIRT="${SAVE_OPENWRT_ARMVIRT_VALUE}"
 
@@ -86,7 +91,9 @@ ERROR="[${red_font_prefix}ERROR${font_color_suffix}]"
 [[ -n "${SCRIPT_S905X2}" ]] || SCRIPT_S905X2="${SCRIPT_S905X2_FILE}"
 [[ -n "${SCRIPT_S905X3}" ]] || SCRIPT_S905X3="${SCRIPT_S905X3_FILE}"
 [[ -n "${SCRIPT_S912}" ]] || SCRIPT_S912="${SCRIPT_S912_FILE}"
-[[ -n "${SCRIPT_S022X}" ]] || SCRIPT_S022X="${SCRIPT_S022X_FILE}"
+[[ -n "${SCRIPT_S922X}" ]] || SCRIPT_S922X="${SCRIPT_S922X_FILE}"
+[[ -n "${SCRIPT_S922X_N2}" ]] || SCRIPT_S922X_N2="${SCRIPT_S922X_N2_FILE}"
+[[ -n "${SCRIPT_DIY}" ]] || SCRIPT_DIY="${SCRIPT_DIY_FILE}"
 
 # Specify make.env variable
 [[ -n "${WHOAMI}" ]] || WHOAMI="${WHOAMI_VALUE}"
@@ -104,27 +111,28 @@ cd /opt
 # Server space usage
 echo -e "${INFO} Server space usage before starting to compile:\n$(df -hT ${PWD}) \n"
 
-# clone openwrt_packit repo
-echo -e "${STEPS} Cloning package script repository [ ${SCRIPT_REPO_URL} ], branch [ ${SCRIPT_REPO_BRANCH} ] into openwrt_packit."
-git clone --depth 1 ${SCRIPT_REPO_URL} -b ${SCRIPT_REPO_BRANCH} openwrt_packit
+# clone ${SELECT_PACKITPATH} repo
+echo -e "${STEPS} Cloning package script repository [ ${SCRIPT_REPO_URL} ], branch [ ${SCRIPT_REPO_BRANCH} ] into ${SELECT_PACKITPATH}."
+git clone --depth 1 ${SCRIPT_REPO_URL} -b ${SCRIPT_REPO_BRANCH} ${SELECT_PACKITPATH}
+sync
 
 # Load openwrt-armvirt-64-default-rootfs.tar.gz
 if [[ ${OPENWRT_ARMVIRT} == http* ]]; then
-   echo -e "${STEPS} wget [ ${OPENWRT_ARMVIRT} ] file into openwrt_packit"
-   wget ${OPENWRT_ARMVIRT} -q -P openwrt_packit
+   echo -e "${STEPS} wget [ ${OPENWRT_ARMVIRT} ] file into ${SELECT_PACKITPATH}"
+   wget ${OPENWRT_ARMVIRT} -q -P ${SELECT_PACKITPATH}
 else
-   echo -e "${STEPS} copy [ ${GITHUB_WORKSPACE}/${OPENWRT_ARMVIRT} ] file into openwrt_packit"
-   cp -f ${GITHUB_WORKSPACE}/${OPENWRT_ARMVIRT} openwrt_packit
+   echo -e "${STEPS} copy [ ${GITHUB_WORKSPACE}/${OPENWRT_ARMVIRT} ] file into ${SELECT_PACKITPATH}"
+   cp -f ${GITHUB_WORKSPACE}/${OPENWRT_ARMVIRT} ${SELECT_PACKITPATH}
 fi
 sync
 
 # Normal openwrt-armvirt-64-default-rootfs.tar.gz file should not be less than 10MB
-armvirt_rootfs_size=$(ls -l openwrt_packit/openwrt-armvirt-64-default-rootfs.tar.gz 2>/dev/null | awk '{print $5}')
+armvirt_rootfs_size=$(ls -l ${SELECT_PACKITPATH}/openwrt-armvirt-64-default-rootfs.tar.gz 2>/dev/null | awk '{print $5}')
 echo -e "${INFO} armvirt_rootfs_size: [ ${armvirt_rootfs_size} ]"
 if [[ "${armvirt_rootfs_size}" -ge "10000000" ]]; then
-   echo -e "${INFO} openwrt_packit/openwrt-armvirt-64-default-rootfs.tar.gz loaded successfully."
+   echo -e "${INFO} ${SELECT_PACKITPATH}/openwrt-armvirt-64-default-rootfs.tar.gz loaded successfully."
 else
-   echo -e "${ERROR} openwrt_packit/openwrt-armvirt-64-default-rootfs.tar.gz failed to load."
+   echo -e "${ERROR} ${SELECT_PACKITPATH}/openwrt-armvirt-64-default-rootfs.tar.gz failed to load."
    exit 1
 fi
 
@@ -205,6 +213,8 @@ echo -e "${STEPS} Start packaging openwrt..."
 k=1
 for KERNEL_VAR in ${SELECT_ARMBIANKERNEL[*]}; do
 
+    cd /opt
+
     # Determine whether the kernel version >= 5.10
     K_VER=$(echo "${KERNEL_VAR}" | cut -d '.' -f1)
     K_MAJ=$(echo "${KERNEL_VAR}" | cut -d '.' -f2)
@@ -232,7 +242,7 @@ for KERNEL_VAR in ${SELECT_ARMBIANKERNEL[*]}; do
     boot_kernel_file=${boot_kernel_file//.tar.gz/}
     echo -e "${INFO} (${k}) KERNEL_VERSION: ${boot_kernel_file}"
     
-    cd openwrt_packit
+    cd ${SELECT_PACKITPATH}
 
     if [[ -n "${OPENWRT_VER}" && "${OPENWRT_VER}" == "auto" ]]; then
         OPENWRT_VER=$(cat make.env | grep "OPENWRT_VER=\"" | cut -d '"' -f2)
@@ -259,6 +269,7 @@ sync
     i=1
     for PACKAGE_VAR in ${PACKAGE_OPENWRT[*]}; do
         {
+            cd /opt/${SELECT_PACKITPATH}
             echo -e "${STEPS} (${k}.${i}) Start packaging OpenWrt, Kernel is [ ${KERNEL_VAR} ], SoC is [ ${PACKAGE_VAR} ]"
 
             now_remaining_space=$(df -hT ${PWD} | grep '/dev/' | awk '{print $5}' | sed 's/.$//')
@@ -278,7 +289,9 @@ sync
                 s905x2)      sudo ./${SCRIPT_S905X2} ;;
                 s905x3)      sudo ./${SCRIPT_S905X3} ;;
                 s912)        sudo ./${SCRIPT_S912} ;;
-                s922x)       sudo ./${SCRIPT_S022X} ;;
+                s922x)       sudo ./${SCRIPT_S922X} ;;
+                s922x-n2)    sudo ./${SCRIPT_S922X_N2} ;;
+                diy)         sudo ./${SCRIPT_DIY} ;;
                 *)           ${WARNING} "Have no this SoC. Skipped."
                              continue ;;
             esac
@@ -286,27 +299,25 @@ sync
             sync
             
             if  [[ "${GZIP_IMGS_VALUE}" == "true" ]]; then
-                echo -e "${STEPS} gzip the openwrt*.img files in the tmp folder. \n"
-                cd tmp && gzip *.img && sync && cd ../
+                echo -e "${STEPS} gzip the openwrt*.img files in the ${SELECT_OUTPUTPATH} folder. \n"
+                cd ${SELECT_OUTPUTPATH} && gzip *.img && sync
             fi
             
             let i++
         }
     done
 
-    cd ../
-    
     let k++
 done
 echo -e "${SUCCESS} All packaged completed. \n"
 
 echo -e "${STEPS} Output environment variables."
-if  [[ -d openwrt_packit/tmp ]]; then
+if  [[ -d /opt/${SELECT_PACKITPATH}/${SELECT_OUTPUTPATH} ]]; then
 
-    cd openwrt_packit/tmp
+    cd /opt/${SELECT_PACKITPATH}/${SELECT_OUTPUTPATH}
 
     if  [[ "${SAVE_OPENWRT_ARMVIRT}" == "true" ]]; then
-        echo -e "${STEPS} copy openwrt-armvirt-64-default-rootfs.tar.gz files into tmp folder."
+        echo -e "${STEPS} copy openwrt-armvirt-64-default-rootfs.tar.gz files into ${SELECT_OUTPUTPATH} folder."
         cp -f ../openwrt-armvirt-64-default-rootfs.tar.gz . && sync
     fi
     
@@ -318,7 +329,7 @@ if  [[ -d openwrt_packit/tmp ]]; then
     echo -e "PACKAGED_OUTPUTDATE: $(date +"%Y.%m.%d.%H%M")"
     echo -e "PACKAGED_STATUS: success"
     echo -e "${INFO} PACKAGED_OUTPUTPATH files list:"
-    echo -e "$(ls /opt/openwrt_packit/tmp 2>/dev/null) \n"
+    echo -e "$(ls /opt/${SELECT_PACKITPATH}/${SELECT_OUTPUTPATH} 2>/dev/null) \n"
 else
     echo -e "${ERROR} Packaging failed. \n"
     echo "PACKAGED_STATUS=failure" >> $GITHUB_ENV
