@@ -1165,18 +1165,24 @@ function adjust_docker_config() {
         if [ -f ./etc/init.d/dockerd ];then
             echo "发现 dockerd 服务，正在调整 ... "
             [ -n "$DOCKERD_PATCH" ] && [ -f "$DOCKERD_PATCH" ] && [ ! -f ./etc/init.d/dockerman ] && patch -p1 < $DOCKERD_PATCH
-            if [ "$PLATFORM" == "amlogic" ];then
-                echo "在 Amlogic 平台上，U盘或TF卡启动默认关闭 dockerd 服务 ... "
-                rm -f ./etc/rc.d/S??dockerd
-            else
-                # 其它平台， 调整启动顺序到99
-                mv -f ./etc/rc.d/S??dockerd ./etc/rc.d/S99dockerd 2>/dev/null
+
+            if [ -f "./etc/init.d/dockerman" ] ;then
+                cat >> ./etc/config/dockerd <<EOF
+
+config globals 'globals'
+        option alt_config_file '/etc/docker/daemon.json' 
+	option auto_start '1'
+EOF
+                sed -e '/uci -q set dockerd.globals.auto_start="0"/d' -i ./etc/uci-defaults/luci-app-dockerman 
             fi
+
+	    # 由first_run.sh负责重新开启dockerd服务
+            echo "默认关闭 dockerd 服务 ... "
+            rm -f ./etc/rc.d/S??dockerd ./etc/rc.d/S??dockerman
             echo "完成"
         else
             echo "未发现 dockerd 服务，放弃调整"
         fi
-        #sed -e "s/option wan_mode 'false'/option wan_mode 'true'/" -i ./etc/config/dockerman 2>/dev/null
     )
     echo
 }
