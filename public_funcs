@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# the default zstd compress level is 3
+export ZSTD_LEVEL=6
+
 get_random_mac ()
 {
     # MAC地址第一段可在 02 06 0A 0E 中任选一个
@@ -698,13 +701,13 @@ function create_fstab_config() {
         cd $TGT_ROOT
         if [ ! -z "${BOOT_UUID}" ];then
             cat > ./etc/fstab <<EOF
-UUID=${ROOTFS_UUID} / btrfs compress=zstd 0 1
+UUID=${ROOTFS_UUID} / btrfs compress=zstd:${ZSTD_LEVEL} 0 1
 UUID=${BOOT_UUID} /boot ext4 noatime,errors=remount-ro 0 2
 #tmpfs /tmp tmpfs defaults,nosuid 0 0
 EOF
         else 
             cat > ./etc/fstab <<EOF
-UUID=${ROOTFS_UUID} / btrfs compress=zstd 0 1
+UUID=${ROOTFS_UUID} / btrfs compress=zstd:${ZSTD_LEVEL} 0 1
 LABEL=${BOOT_LABEL} /boot vfat defaults 0 2
 #tmpfs /tmp tmpfs defaults,nosuid 0 0
 EOF
@@ -725,7 +728,7 @@ config mount
         option enabled_fsck '1'
         option uuid '${ROOTFS_UUID}'
         option fstype 'btrfs'
-        option options 'compress=zstd'
+        option options 'compress=zstd:${ZSTD_LEVEL}'
 
 config mount
         option target '/boot'
@@ -758,14 +761,45 @@ function adjust_ntfs_config() {
     echo -n "调整 ntfs 配置 ... "
     ( 
         cd $TGT_ROOT/sbin
-        if [ -f mount.ntfs3 ];then
-            ln -sf mount.ntfs3 mount.ntfs
-            echo "发现 mount.ntfs3, 调整完成"
-        elif [ -f ../usr/bin/ntfs-3g ];then
+        if ls ../usr/lib/opkg/info/ntfs3* >/dev/null 2>&1;then
+            rm -f mount.ntfs* 
+            cat > mount.ntfs <<EOF
+#!/bin/sh
+
+function check_k515() {
+    # 判断内核版本是否 >= 5.15
+    K_VER=\$(uname -r | cut -d '.' -f1)
+    K_MAJ=\$(uname -r | cut -d '.' -f2)
+
+    if [ \$K_VER -eq 5 ];then
+        if [ \$K_MAJ -ge 15 ];then
+            K515=1
+        else
+            K515=0
+        fi
+    elif [ \$K_VER -gt 5 ];then
+        K515=1
+    else
+        K515=0
+    fi
+    export K515
+}
+
+check_k515
+if [ \$K515 -eq 1 ];then
+    mount -t ntfs3 -o iocharset=utf8,force "\$@"
+else
+    mount -t ntfs3 -o nls=utf8,force "\$@"
+fi
+
+EOF
+            chmod 755 mount.ntfs
+            echo "发现 ntfs3, 调整完成"
+        elif ls ../usr/lib/opkg/info/ntfs-3g* >/dev/null 2>&1;then
             ln -sf /usr/bin/ntfs-3g mount.ntfs
             echo "发现 ntfs-3g, 调整完成"
         else
-            echo "固件中未包含 ntfs 相关程序"
+            echo "完成"
         fi
     )
 }
@@ -887,6 +921,7 @@ function copy_supplement_files() {
         [ -n "$OPENWRT_KERNEL" ] && [ -f ${OPENWRT_KERNEL} ] && cp -v ${OPENWRT_KERNEL} ./usr/sbin/
         [ -n "$OPENWRT_BACKUP" ] && [ -f ${OPENWRT_BACKUP} ] && cp -v ${OPENWRT_BACKUP} ./usr/sbin/ && (cd usr/sbin && ln -sfv openwrt-backup flippy)
         [ -n "$OPENWRT_UPDATE" ] && [ -f ${OPENWRT_UPDATE} ] && cp -v ${OPENWRT_UPDATE} ./usr/sbin/
+	[ -n "${DDBR}" ] && [ -f "${DDBR}" ] && cp -v ${DDBR} ./usr/sbin/
 
         # 我家云, 风扇调速脚本
         if [ "$PLATFORM" == "rockchip" ] && [ "$SOC" == "rk3328" ] && [ "$BOARD" == "l1pro" ] && [ -f "$PWM_FAN" ];then
@@ -920,6 +955,10 @@ function copy_supplement_files() {
 /root/.ssh/
 EOF
 
+        if [ -n "${P7ZIP}" ] && [ -f "$P7ZIP" ];then
+             rm -rf ./usr/lib/opkg/info/p7zip* ./usr/lib/p7zip ./usr/bin/7z
+	     cp -v "${P7ZIP}" ./usr/bin/7z && chmod 755 ./usr/bin/7z
+        fi
     )
     echo "==============================================================================="
     echo "完成"
@@ -1018,6 +1057,8 @@ function adjust_samba_config() {
          if [ -f ./etc/config/samba4 ];then
              echo "发现 samba4, 将启用 smbv1 协议. "        
              sed -e 's/services/nas/g' -i ./usr/lib/lua/luci/controller/samba4.lua
+	     sed -e 's/services/nas/g' -i ./usr/share/luci/menu.d/luci-app-samba4.json
+
              [ -f ${SMB4_PATCH} ] && patch -p1 < ${SMB4_PATCH}
          fi
     )
@@ -1187,16 +1228,34 @@ EOF
     echo
 }
 
-# 用 xray-plugin 代替 v2ray-plugin
+# mosdns 配置调整
+function adjust_mosdns_config() {
+    (
+    	if [ -f ./etc/config/mosdns ];then
+            echo -n "发现mosdns配置，正在调整 ... "
+	    sed -e "s/option enabled '1'/option enabled '0'/" -i ./etc/config/mosdns
+	    sed -e "s/option redirect '1'/option redirect '0'/" -i ./etc/config/mosdns
+	    sed -e "s/option autoconf '1'/option autoconf '0'/" -i ./etc/config/mosdns
+	    echo "完成"
+        fi
+    )
+}
+
+# 用 xray 代替 v2ray (如果v2ray不存在)
 function use_xrayplug_replace_v2rayplug() {
-    echo -n "用 xray-plugin 代替 v2ray-plugin ... "
     (
         cd $TGT_ROOT
-        if [ -f usr/bin/xray-plugin ] && [ -f usr/bin/v2ray-plugin ];then
+        if [ -f usr/bin/xray ] && [ ! -f usr/bin/v2ray ];then
+            echo -n "用 xray 代替 v2ray ... "
+            cd usr/bin && rm -f v2ray && ln -s xray v2ray
+            echo "完成"
+        fi
+
+        cd $TGT_ROOT
+        if [ -f usr/bin/xray-plugin ] && [ ! -f usr/bin/v2ray-plugin ];then
+            echo -n "用 xray-plugin 代替 v2ray-plugin ... "
             cd usr/bin && rm -f v2ray-plugin && ln -s xray-plugin v2ray-plugin
             echo "完成"
-        else
-            echo "不符合替换条件，跳过"
         fi
     )
 }

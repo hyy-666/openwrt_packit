@@ -99,6 +99,10 @@ FORCE_REBOOT="${PWD}/files/rk3328/reboot"
 OPENWRT_KERNEL="${PWD}/files/openwrt-kernel"
 OPENWRT_BACKUP="${PWD}/files/openwrt-backup"
 OPENWRT_UPDATE="${PWD}/files/openwrt-update-rockchip"
+# 20211214 add
+P7ZIP="${PWD}/files/7z"
+# 20211217 add
+DDBR="${PWD}/files/openwrt-ddbr"
 ####################################################################
 
 check_depends
@@ -111,7 +115,7 @@ create_image "$TGT_IMG" "$SIZE"
 create_partition "$TGT_DEV" "msdos" "$SKIP_MB" "$BOOT_MB" "ext4" "0" "-1" "btrfs"
 make_filesystem "$TGT_DEV" "B" "ext4" "EMMC_BOOT" "R" "btrfs" "EMMC_ROOTFS1"
 mount_fs "${TGT_DEV}p1" "${TGT_BOOT}" "ext4"
-mount_fs "${TGT_DEV}p2" "${TGT_ROOT}" "btrfs" "compress=zstd"
+mount_fs "${TGT_DEV}p2" "${TGT_ROOT}" "btrfs" "compress=zstd:${ZSTD_LEVEL}"
 echo "创建 /etc 子卷 ..."
 btrfs subvolume create $TGT_ROOT/etc
 extract_rootfs_files
@@ -127,7 +131,7 @@ verbosity=7
 overlay_prefix=rockchip
 rootdev=UUID=${ROOTFS_UUID}
 rootfstype=btrfs
-rootflags=compress=zstd
+rootflags=compress=zstd:${ZSTD_LEVEL}
 extraargs=usbcore.autosuspend=-1
 extraboardargs=
 fdtfile=/dtb/rockchip/rk3328-beikeyun-1296mhz.dtb
@@ -154,6 +158,7 @@ use_xrayplug_replace_v2rayplug
 create_fstab_config
 adjust_turboacc_config
 adjust_ntfs_config
+adjust_mosdns_config
 patch_admin_status_index_html
 adjust_kernel_env
 copy_uboot_to_fs
