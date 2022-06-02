@@ -23,7 +23,7 @@ check_file ${DTBS_TGZ}
 # Openwrt 
 OP_ROOT_TGZ="openwrt-armvirt-64-default-rootfs.tar.gz"
 OPWRT_ROOTFS_GZ="${PWD}/${OP_ROOT_TGZ}"
-check_file ${OP_ROOT_TGZ}
+check_file ${OPWRT_ROOTFS_GZ}
 echo "Use $OPWRT_ROOTFS_GZ as openwrt rootfs!"
 
 # Target Image
@@ -71,8 +71,8 @@ SSL_CNF_PATCH="${PWD}/files/openssl_engine.patch"
 BAL_CONFIG="${PWD}/files/vplus/balance_irq"
 
 # 20210424 modify
-UBOOT_BIN="${PWD}/files/vplus/u-boot-v2021.04/u-boot-sunxi-with-spl.bin"
-WRITE_UBOOT_SCRIPT="${PWD}/files/vplus/u-boot-v2021.04/update-u-boot.sh"
+UBOOT_BIN="${PWD}/files/vplus/u-boot-v2022.04/u-boot-sunxi-with-spl.bin"
+WRITE_UBOOT_SCRIPT="${PWD}/files/vplus/u-boot-v2022.04/update-u-boot.sh"
 
 # 20210307 add
 SS_LIB="${PWD}/files/ss-glibc/lib-glibc.tar.xz"
